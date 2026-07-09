@@ -1,0 +1,25 @@
+{
+  "name": "Archivo — Biblioteca personal",
+  "short_name": "Archivo",
+  "description": "Guarda y lee PDF, ePub y Word sin conexión, desde un icono en tu pantalla de inicio.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0F1B14",
+  "theme_color": "#0F1B14",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

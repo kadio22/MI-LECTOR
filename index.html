@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Archivo — Biblioteca personal</title>
+<meta name="theme-color" content="#0F1B14">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Archivo">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0F1B14;
+    --surface: #16241C;
+    --surface-2: #1D2E23;
+    --line: #2A3B2E;
+    --brass: #C9A15A;
+    --teal: #4A7C6D;
+    --ink: #EDE6D6;
+    --ink-muted: #9DAE9F;
+    --danger: #B5533C;
+    --radius: 10px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  #app{ display:flex; flex-direction:column; height:100dvh; }
+
+  header{
+    padding: env(safe-area-inset-top, 18px) 20px 14px 20px;
+    border-bottom: 1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+  }
+  header h1{
+    font-family:'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin:0;
+    letter-spacing: 0.2px;
+  }
+  header .eyebrow{
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--brass);
+    display:block;
+    margin-bottom:2px;
+  }
+
+  /* Botón "+" como <label> asociado al input: evita fallos de input.click()
+     en PWAs instaladas (iOS/Android WebView) */
+  /* El input vive DENTRO del label (no solo enlazado por "for"): así un tap
+     en cualquier punto del botón cae físicamente sobre el input y el
+     navegador SIEMPRE abre el selector de archivos, sin depender de JS
+     ni de que el navegador respete la asociación for/id. */
+  label#addBtn{
+    position: relative;
+    background: var(--brass);
+    color: #14210B;
+    border:none;
+    border-radius: 999px;
+    width:44px; height:44px;
+    font-size: 24px;
+    line-height:1;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    overflow: hidden;
+  }
+  label#addBtn:active{ transform: scale(0.94); }
+
+  #fileInput{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 0;
+  }
+
+  /* Barra de carpetas */
+  #folderBar{
+    display:flex; gap:8px; overflow-x:auto;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+    flex-shrink:0; -webkit-overflow-scrolling:touch;
+  }
+  #folderBar::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex-shrink:0;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-muted);
+    font-size: 13px;
+    cursor:pointer;
+    white-space:nowrap;
+    display:flex; align-items:center; gap:6px;
+  }
+  .chip.active{ background: var(--teal); color:#fff; border-color: var(--teal); }
+  .chip.new{ color: var(--brass); border-color: var(--brass); }
+  .chip .chip-x{ opacity:0.6; font-size:11px; }
+  .chip .chip-x:active{ opacity:1; }
+
+  main{ flex:1; overflow-y:auto; padding: 16px 16px 90px 16px; }
+
+  #empty{
+    margin-top: 14vh;
+    text-align:center;
+    color: var(--ink-muted);
+  }
+  #empty .glyph{ font-size: 40px; margin-bottom:10px; opacity:0.6; }
+  #empty p{ font-family:'Fraunces', serif; font-size:17px; margin: 4px 0; color: var(--ink); }
+  #empty span{ font-size: 13px; }
+
+  .shelf{ display:flex; flex-direction:column; gap:10px; }
+
+  .book{
+    display:flex;
+    align-items:stretch;
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .book:active{ background: var(--surface-2); }
+
+  .spine{
+    width: 46px;
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces', serif;
+    font-size: 11px;
+    font-weight:700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .spine.pdf{ background: #6E3B3B; color:#F0DAD3; }
+  .spine.docx{ background: #2F5C86; color:#D8E7F5; }
+  .spine.epub{ background: var(--teal); color:#E7F1EC; }
+  .spine.txt{ background: #6A6249; color:#F0EAD2; }
+  .spine span{ writing-mode: vertical-rl; transform: rotate(180deg); }
+
+  .book-info{
+    flex:1;
+    padding: 12px 14px;
+    min-width:0;
+  }
+  .book-title{
+    font-family:'Fraunces', serif;
+    font-size: 15.5px;
+    font-weight:600;
+    color: var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .book-meta{
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 3px;
+  }
+  .book-actions{
+    display:flex; align-items:center; gap:2px; padding-right: 8px;
+  }
+  .book-actions button{
+    background:none; border:none; color: var(--ink-muted);
+    font-size: 17px; padding: 6px 7px; cursor:pointer;
+  }
+  .book-actions button:active{ color: var(--brass); }
+  .book-actions button.del:active{ color: var(--danger); }
+
+  /* Visor */
+  #viewer{
+    position: fixed; inset:0;
+    background: var(--bg);
+    display:none;
+    flex-direction: column;
+    z-index: 50;
+  }
+  #viewer.open{ display:flex; }
+  .viewer-bar{
+    display:flex; align-items:center; gap:10px;
+    padding: env(safe-area-inset-top, 16px) 12px 12px 12px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink:0;
+  }
+  .viewer-bar button{
+    background: var(--surface); border:1px solid var(--line); color: var(--ink);
+    border-radius: 999px; width:38px; height:38px; font-size:18px; cursor:pointer;
+  }
+  .viewer-bar .vtitle{
+    font-family:'Fraunces', serif; font-size:14.5px; flex:1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #viewerBody{ flex:1; overflow:auto; -webkit-overflow-scrolling:touch; background: var(--surface); }
+
+  #pdfPages{ display:flex; flex-direction:column; align-items:center; gap:10px; padding: 14px 8px; }
+  #pdfPages canvas{ max-width:100%; box-shadow:0 2px 10px rgba(0,0,0,0.4); background:#fff; }
+
+  #htmlDoc{
+    background:#F4F0E4; color:#241E12;
+    max-width: 720px; margin: 0 auto; padding: 32px 26px 60px 26px;
+    font-family: Georgia, 'Fraunces', serif; line-height:1.6; font-size:16px;
+    min-height:100%;
+  }
+  #htmlDoc img{ max-width:100%; }
+  #htmlDoc table{ border-collapse: collapse; }
+  #htmlDoc td, #htmlDoc th{ border:1px solid #999; padding:4px 8px; }
+
+  .epub-nav{
+    position:sticky; bottom:0; display:flex; justify-content:space-between;
+    padding: 10px 16px; background: rgba(15,27,20,0.92); border-top:1px solid var(--line);
+  }
+  .epub-nav button{
+    background: var(--surface-2); border:1px solid var(--line); color: var(--ink);
+    padding: 8px 16px; border-radius: 8px; font-size:13px;
+  }
+
+  #status{
+    position:fixed; left:16px; right:16px; bottom: 20px;
+    background: var(--surface-2); border:1px solid var(--line);
+    padding: 10px 14px; border-radius: 8px; font-size: 13px; color: var(--ink);
+    display:none; z-index: 60;
+  }
+  #status.show{ display:block; }
+
+  /* Modal genérico (nueva carpeta / mover documento) */
+  .modal-overlay{
+    position:fixed; inset:0; background: rgba(0,0,0,0.55);
+    display:none; align-items:flex-end; justify-content:center; z-index: 70;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-box{
+    background: var(--surface); width:100%; max-width:480px;
+    border-radius: 16px 16px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom,0px)) 20px;
+    border-top: 1px solid var(--line);
+  }
+  .modal-box h3{
+    font-family:'Fraunces', serif; margin:0 0 14px 0; font-size:17px;
+  }
+  .modal-box input[type="text"]{
+    width:100%; background: var(--surface-2); border:1px solid var(--line);
+    color: var(--ink); border-radius:8px; padding:10px 12px; font-size:15px;
+    margin-bottom:14px;
+  }
+  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; }
+  .modal-actions button{
+    padding: 9px 16px; border-radius:8px; border:1px solid var(--line);
+    background: var(--surface-2); color: var(--ink); font-size:14px; cursor:pointer;
+  }
+  .modal-actions button.primary{ background: var(--brass); color:#14210B; border-color: var(--brass); }
+
+  .move-list{ display:flex; flex-direction:column; gap:6px; max-height: 40vh; overflow-y:auto; margin-bottom:14px; }
+  .move-item{
+    padding: 10px 12px; border-radius:8px; background: var(--surface-2);
+    border:1px solid var(--line); color: var(--ink); font-size:14.5px; cursor:pointer;
+  }
+  .move-item.current{ border-color: var(--brass); color: var(--brass); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <span class="eyebrow">Tu estante</span>
+      <h1>Archivo</h1>
+    </div>
+    <label id="addBtn" title="Añadir documento">
+      +
+      <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.epub,.txt" multiple>
+    </label>
+  </header>
+
+  <div id="folderBar"></div>
+
+  <main>
+    <div id="empty">
+      <div class="glyph">📖</div>
+      <p>El estante está vacío</p>
+      <span>Toca “+” para añadir un PDF, ePub o Word</span>
+    </div>
+    <div class="shelf" id="shelf"></div>
+  </main>
+</div>
+
+<div id="viewer">
+  <div class="viewer-bar">
+    <button id="closeViewer">←</button>
+    <div class="vtitle" id="viewerTitle">Documento</div>
+  </div>
+  <div id="viewerBody"></div>
+</div>
+
+<div id="status"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.2/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
